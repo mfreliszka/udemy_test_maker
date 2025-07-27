@@ -1,0 +1,541 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+{% if question %}Edit Question{% else %}Add New Question{% endif %} - Udemy Test Maker
+{% endblock %}
+
+{% block breadcrumb_items %}
+<li><a href="{% url 'tests_app:question_list' %}">Questions</a></li>
+<li>{% if question %}Edit Question{% else %}Add Question{% endif %}</li>
+{% endblock %}
+
+{% block page_title %}
+<i class="fas fa-{% if question %}edit{% else %}plus{% endif %} mr-3"></i>
+{% if question %}Edit Question{% else %}Add New Question{% endif %}
+{% endblock %}
+
+{% block page_description %}
+{% if question %}
+Update this practice question for {{ question.exam.display_name }}
+{% else %}
+Create a new practice question for Google Cloud certification exams
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<form id="questionForm" method="post" class="space-y-6">
+    {% csrf_token %}
+    
+    <!-- Question Basic Information -->
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <h2 class="card-title text-xl mb-6">
+                <i class="fas fa-info-circle mr-2 text-blue-500"></i>Question Information
+            </h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Exam Selection -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium">
+                            <i class="fas fa-graduation-cap mr-1"></i>Exam
+                        </span>
+                        <span class="label-text-alt text-error">*</span>
+                    </label>
+                    <select name="exam" id="exam" class="select select-bordered" required onchange="loadDomains()">
+                        <option value="">Select an exam...</option>
+                        {% for exam in exams %}
+                        <option value="{{ exam.pk }}" {% if question and question.exam.pk == exam.pk %}selected{% endif %}>
+                            {{ exam.display_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <label class="label">
+                        <span class="label-text-alt">Choose the certification exam</span>
+                    </label>
+                </div>
+                
+                <!-- Domain Selection -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium">
+                            <i class="fas fa-sitemap mr-1"></i>Domain
+                        </span>
+                        <span class="label-text-alt">(optional)</span>
+                    </label>
+                    <select name="domain" id="domain" class="select select-bordered">
+                        <option value="">Select exam first...</option>
+                        {% if question %}
+                            {% for domain in question.exam.domains.all %}
+                            <option value="{{ domain.pk }}" {% if question.domain.pk == domain.pk %}selected{% endif %}>
+                                {{ domain.name|truncatechars:60 }}
+                            </option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                    <label class="label">
+                        <span class="label-text-alt">Choose the exam section/domain</span>
+                    </label>
+                </div>
+                
+                <!-- Test Number -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium">
+                            <i class="fas fa-hashtag mr-1"></i>Test Number
+                        </span>
+                        <span class="label-text-alt text-error">*</span>
+                    </label>
+                    <input type="number" name="test_number" id="test_number" 
+                           class="input input-bordered" 
+                           min="1" max="50" 
+                           value="{% if question %}{{ question.test_number }}{% else %}1{% endif %}" 
+                           required>
+                    <label class="label">
+                        <span class="label-text-alt">Test number (1-50, typically 1-15)</span>
+                    </label>
+                </div>
+                
+                <!-- Question Type -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium">
+                            <i class="fas fa-check-double mr-1"></i>Question Type
+                        </span>
+                        <span class="label-text-alt text-error">*</span>
+                    </label>
+                    <select name="question_type" id="question_type" class="select select-bordered" required>
+                        <option value="multiple_select" {% if not question or question.question_type == 'multiple_select' %}selected{% endif %}>
+                            Multiple Select (choose multiple correct answers)
+                        </option>
+                        <option value="multiple_choice" {% if question and question.question_type == 'multiple_choice' %}selected{% endif %}>
+                            Multiple Choice (choose one correct answer)
+                        </option>
+                    </select>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+    
+    <!-- Question Text -->
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <h2 class="card-title text-xl mb-6">
+                <i class="fas fa-question mr-2 text-green-500"></i>Question Content
+            </h2>
+            
+            <div class="form-control">
+                <label class="label">
+                    <span class="label-text font-medium">Question Text</span>
+                    <span class="label-text-alt text-error">*</span>
+                </label>
+                <textarea name="question_text" id="question_text" 
+                          class="textarea textarea-bordered h-32" 
+                          placeholder="Enter your question here..."
+                          required>{% if question %}{{ question.question_text }}{% endif %}</textarea>
+                <label class="label">
+                    <span class="label-text-alt">
+                        <span id="questionCharCount">0</span> characters
+                    </span>
+                </label>
+            </div>
+            
+            <div class="form-control mt-4">
+                <label class="label">
+                    <span class="label-text font-medium">Overall Explanation</span>
+                </label>
+                <textarea name="overall_explanation" id="overall_explanation" 
+                          class="textarea textarea-bordered h-24" 
+                          placeholder="Explain why the correct answers are correct (optional)">{% if question %}{{ question.overall_explanation }}{% endif %}</textarea>
+                <label class="label">
+                    <span class="label-text-alt">General explanation for the question</span>
+                </label>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Answer Options -->
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="card-title text-xl">
+                    <i class="fas fa-list-ul mr-2 text-orange-500"></i>Answer Options
+                    <div class="badge badge-primary" id="answerCount">3</div>
+                </h2>
+                <div class="flex gap-2">
+                    <button type="button" onclick="addAnswer()" class="btn btn-sm btn-primary">
+                        <i class="fas fa-plus mr-1"></i>Add Answer
+                    </button>
+                    <button type="button" onclick="removeLastAnswer()" class="btn btn-sm btn-error" id="removeBtn">
+                        <i class="fas fa-minus mr-1"></i>Remove
+                    </button>
+                </div>
+            </div>
+            
+            <div id="answersContainer" class="space-y-4">
+                <!-- Answers will be dynamically generated here -->
+            </div>
+            
+            <div class="mt-6 p-4 bg-blue-50 border-l-4 border-blue-400 rounded">
+                <p class="text-sm text-blue-700">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    <strong>Tips:</strong> You can have 3-7 answers per question. 
+                    Mark answers as correct by checking the checkbox next to them. 
+                    For multiple select questions, you can have multiple correct answers.
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Form Actions -->
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <label class="label cursor-pointer">
+                        <input type="checkbox" name="is_active" class="checkbox checkbox-primary" 
+                               {% if not question or question.is_active %}checked{% endif %}>
+                        <span class="label-text ml-2">Active (include in exports)</span>
+                    </label>
+                </div>
+                
+                <div class="flex gap-2">
+                    <a href="{% url 'tests_app:question_list' %}" class="btn btn-ghost">
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </a>
+                    <button type="button" onclick="previewQuestion()" class="btn btn-secondary">
+                        <i class="fas fa-eye mr-2"></i>Preview
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save mr-2"></i>
+                        {% if question %}Update Question{% else %}Create Question{% endif %}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Preview Modal -->
+<dialog id="previewModal" class="modal">
+    <form method="dialog" class="modal-box max-w-4xl">
+        <h3 class="font-bold text-lg mb-4">
+            <i class="fas fa-eye mr-2"></i>Question Preview
+        </h3>
+        
+        <div id="previewContent">
+            <!-- Preview content will be inserted here -->
+        </div>
+        
+        <div class="modal-action">
+            <button class="btn btn-primary">Close</button>
+        </div>
+    </form>
+</dialog>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let answerCounter = 0;
+let domainData = {};
+
+// Load domain data for each exam
+{% for exam in exams %}
+domainData[{{ exam.pk }}] = [
+    {% for domain in exam.domains.all %}
+    {id: {{ domain.pk }}, name: "{{ domain.name|truncatechars:60|escapejs }}"},
+    {% endfor %}
+];
+{% endfor %}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize answers
+    {% if question %}
+        // Load existing answers
+        const existingAnswers = [
+            {% for answer in question.answers.all %}
+            {
+                text: "{{ answer.answer_text|escapejs }}",
+                isCorrect: {{ answer.is_correct|yesno:"true,false" }},
+                explanation: "{{ answer.explanation|escapejs }}"
+            },
+            {% endfor %}
+        ];
+        
+        existingAnswers.forEach(answer => {
+            addAnswer(answer.text, answer.isCorrect, answer.explanation);
+        });
+    {% else %}
+        // Add default 3 answers for new questions
+        for (let i = 0; i < 3; i++) {
+            addAnswer();
+        }
+    {% endif %}
+    
+    // Character counter
+    const questionText = document.getElementById('question_text');
+    const charCount = document.getElementById('questionCharCount');
+    
+    function updateCharCount() {
+        charCount.textContent = questionText.value.length;
+    }
+    
+    questionText.addEventListener('input', updateCharCount);
+    updateCharCount();
+    
+    updateAnswerCount();
+});
+
+function loadDomains() {
+    const examSelect = document.getElementById('exam');
+    const domainSelect = document.getElementById('domain');
+    const examId = examSelect.value;
+    
+    // Clear domain options
+    domainSelect.innerHTML = '<option value="">Loading domains...</option>';
+    
+    if (examId) {
+        // Use AJAX to load domains
+        makeAjaxRequest(`{% url 'tests_app:ajax_load_domains' %}?exam_id=${examId}`)
+            .then(response => response.json())
+            .then(data => {
+                domainSelect.innerHTML = '<option value="">Select a domain...</option>';
+                
+                if (data.domains && data.domains.length > 0) {
+                    data.domains.forEach(domain => {
+                        const option = document.createElement('option');
+                        option.value = domain.id;
+                        option.textContent = domain.name;
+                        domainSelect.appendChild(option);
+                    });
+                } else {
+                    domainSelect.innerHTML = '<option value="">No domains available</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading domains:', error);
+                domainSelect.innerHTML = '<option value="">Error loading domains</option>';
+                showToast('Error loading domains. Please try again.', 'error');
+            });
+    } else {
+        domainSelect.innerHTML = '<option value="">Select exam first...</option>';
+    }
+}
+
+function addAnswer(text = '', isCorrect = false, explanation = '') {
+    if (answerCounter >= 7) {
+        alert('Maximum 7 answers allowed per question');
+        return;
+    }
+    
+    answerCounter++;
+    const container = document.getElementById('answersContainer');
+    
+    const answerDiv = document.createElement('div');
+    answerDiv.className = 'border border-base-300 rounded-lg p-4 answer-item';
+    answerDiv.dataset.answerIndex = answerCounter;
+    
+    answerDiv.innerHTML = `
+        <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 mt-2">
+                <div class="w-8 h-8 rounded-full bg-primary text-primary-content flex items-center justify-center font-bold">
+                    ${String.fromCharCode(96 + answerCounter)}
+                </div>
+            </div>
+            
+            <div class="flex-1 space-y-4">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium">Answer ${answerCounter}</span>
+                        <label class="label cursor-pointer">
+                            <span class="label-text mr-2">Correct Answer</span>
+                            <input type="checkbox" name="answer_${answerCounter}_correct" 
+                                   class="checkbox checkbox-success" ${isCorrect ? 'checked' : ''}
+                                   onchange="validateCorrectAnswers()">
+                        </label>
+                    </label>
+                    <textarea name="answer_${answerCounter}_text" 
+                              class="textarea textarea-bordered" 
+                              placeholder="Enter answer option..."
+                              required>${text}</textarea>
+                </div>
+                
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Explanation (optional)</span>
+                    </label>
+                    <textarea name="answer_${answerCounter}_explanation" 
+                              class="textarea textarea-bordered textarea-sm" 
+                              placeholder="Explain why this answer is correct or incorrect...">${explanation}</textarea>
+                </div>
+            </div>
+            
+            <div class="flex-shrink-0">
+                <button type="button" onclick="removeAnswer(${answerCounter})" 
+                        class="btn btn-sm btn-ghost btn-circle text-error">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(answerDiv);
+    updateAnswerCount();
+    updateRemoveButton();
+}
+
+function removeAnswer(index) {
+    const answerDiv = document.querySelector(`[data-answer-index="${index}"]`);
+    if (answerDiv) {
+        answerDiv.remove();
+        updateAnswerCount();
+        updateRemoveButton();
+        validateCorrectAnswers();
+    }
+}
+
+function removeLastAnswer() {
+    const answers = document.querySelectorAll('.answer-item');
+    if (answers.length > 3) {
+        answers[answers.length - 1].remove();
+        updateAnswerCount();
+        updateRemoveButton();
+        validateCorrectAnswers();
+    }
+}
+
+function updateAnswerCount() {
+    const count = document.querySelectorAll('.answer-item').length;
+    document.getElementById('answerCount').textContent = count;
+}
+
+function updateRemoveButton() {
+    const count = document.querySelectorAll('.answer-item').length;
+    const removeBtn = document.getElementById('removeBtn');
+    removeBtn.disabled = count <= 3;
+    removeBtn.classList.toggle('btn-disabled', count <= 3);
+}
+
+function validateCorrectAnswers() {
+    const questionType = document.getElementById('question_type').value;
+    const correctAnswers = document.querySelectorAll('input[name*="_correct"]:checked');
+    
+    if (questionType === 'multiple_choice' && correctAnswers.length > 1) {
+        alert('Multiple choice questions can only have one correct answer');
+        // Keep only the last checked answer
+        for (let i = 0; i < correctAnswers.length - 1; i++) {
+            correctAnswers[i].checked = false;
+        }
+    }
+}
+
+function previewQuestion() {
+    const formData = new FormData(document.getElementById('questionForm'));
+    const questionText = formData.get('question_text');
+    const questionType = formData.get('question_type');
+    const overallExplanation = formData.get('overall_explanation');
+    
+    // Get answers
+    const answers = [];
+    const answerDivs = document.querySelectorAll('.answer-item');
+    answerDivs.forEach((div, index) => {
+        const answerIndex = div.dataset.answerIndex;
+        const text = formData.get(`answer_${answerIndex}_text`);
+        const isCorrect = formData.get(`answer_${answerIndex}_correct`) === 'on';
+        const explanation = formData.get(`answer_${answerIndex}_explanation`);
+        
+        if (text.trim()) {
+            answers.push({text, isCorrect, explanation});
+        }
+    });
+    
+    // Generate preview HTML
+    let previewHTML = `
+        <div class="space-y-6">
+            <div class="card bg-base-100 border">
+                <div class="card-body">
+                    <div class="flex gap-2 mb-4">
+                        <div class="badge badge-primary">Preview</div>
+                        <div class="badge badge-${questionType === 'multiple_select' ? 'info' : 'success'}">
+                            ${questionType === 'multiple_select' ? 'Multiple Select' : 'Single Choice'}
+                        </div>
+                    </div>
+                    
+                    <h3 class="text-lg font-medium mb-4">${questionText || 'No question text entered'}</h3>
+                    
+                    <div class="space-y-3">
+    `;
+    
+    answers.forEach((answer, index) => {
+        previewHTML += `
+            <div class="flex items-start gap-3 p-2 rounded ${answer.isCorrect ? 'bg-success/10' : ''}">
+                <div class="w-6 h-6 rounded-full bg-primary text-primary-content flex items-center justify-center text-sm font-bold">
+                    ${String.fromCharCode(97 + index)}
+                </div>
+                <div class="flex-1">
+                    <p class="${answer.isCorrect ? 'text-success font-medium' : ''}">${answer.text}</p>
+                    ${answer.explanation ? `<p class="text-sm text-base-content/70 mt-1">${answer.explanation}</p>` : ''}
+                </div>
+                ${answer.isCorrect ? '<i class="fas fa-check-circle text-success"></i>' : ''}
+            </div>
+        `;
+    });
+    
+    if (overallExplanation) {
+        previewHTML += `
+                    </div>
+                    
+                    <div class="mt-6 p-4 bg-blue-50 border-l-4 border-blue-400 rounded">
+                        <h4 class="font-medium text-blue-800 mb-2">Overall Explanation</h4>
+                        <p class="text-blue-700">${overallExplanation}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+    } else {
+        previewHTML += `
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+    }
+    
+    document.getElementById('previewContent').innerHTML = previewHTML;
+    document.getElementById('previewModal').showModal();
+}
+
+// Form validation before submit
+document.getElementById('questionForm').addEventListener('submit', function(e) {
+    const correctAnswers = document.querySelectorAll('input[name*="_correct"]:checked');
+    
+    if (correctAnswers.length === 0) {
+        e.preventDefault();
+        alert('Please mark at least one answer as correct');
+        return;
+    }
+    
+    const answerTexts = document.querySelectorAll('textarea[name*="_text"]');
+    let hasEmptyAnswers = false;
+    
+    answerTexts.forEach(textarea => {
+        if (!textarea.value.trim()) {
+            hasEmptyAnswers = true;
+        }
+    });
+    
+    if (hasEmptyAnswers) {
+        e.preventDefault();
+        alert('Please fill in all answer options or remove empty ones');
+        return;
+    }
+});
+
+// Question type change handler
+document.getElementById('question_type').addEventListener('change', validateCorrectAnswers);
+</script>
+{% endblock %}

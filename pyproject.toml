@@ -1,0 +1,21 @@
+[project]
+name = "udemy-test-maker"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Michał Freliszka",email = "mfreliszka@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.12,<4.0"
+dependencies = [
+    "django (>=5.2.4,<6.0.0)",
+    "django-tailwind (>=4.2.0,<5.0.0)",
+    "django-crispy-forms (>=2.4,<3.0)",
+    "crispy-tailwind (>=1.0.3,<2.0.0)",
+    "python-decouple (>=3.8,<4.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - Udemy Test Maker{% endblock %}
+
+{% block page_title %}
+<i class="fas fa-tachometer-alt mr-3"></i>Dashboard
+{% endblock %}
+
+{% block page_description %}
+Overview of your Google Cloud certification test questions and exam management
+{% endblock %}
+
+{% block content %}
+<!-- Statistics Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Total Exams -->
+    <div class="stat bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg shadow-lg">
+        <div class="stat-figure text-blue-200">
+            <i class="fas fa-graduation-cap text-3xl"></i>
+        </div>
+        <div class="stat-title text-blue-100">Active Exams</div>
+        <div class="stat-value">{{ stats.total_exams }}</div>
+        <div class="stat-desc text-blue-200">Certification tracks</div>
+    </div>
+
+    <!-- Total Questions -->
+    <div class="stat bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg shadow-lg">
+        <div class="stat-figure text-green-200">
+            <i class="fas fa-question-circle text-3xl"></i>
+        </div>
+        <div class="stat-title text-green-100">Total Questions</div>
+        <div class="stat-value">{{ stats.total_questions }}</div>
+        <div class="stat-desc text-green-200">Practice questions</div>
+    </div>
+
+    <!-- Total Domains -->
+    <div class="stat bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg shadow-lg">
+        <div class="stat-figure text-purple-200">
+            <i class="fas fa-sitemap text-3xl"></i>
+        </div>
+        <div class="stat-title text-purple-100">Exam Domains</div>
+        <div class="stat-value">{{ stats.total_domains }}</div>
+        <div class="stat-desc text-purple-200">Topic areas</div>
+    </div>
+
+    <!-- Total Answers -->
+    <div class="stat bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg shadow-lg">
+        <div class="stat-figure text-orange-200">
+            <i class="fas fa-list-ul text-3xl"></i>
+        </div>
+        <div class="stat-title text-orange-100">Answer Options</div>
+        <div class="stat-value">{{ stats.total_answers }}</div>
+        <div class="stat-desc text-orange-200">Multiple choices</div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="card bg-base-100 shadow-xl mb-8">
+    <div class="card-body">
+        <h2 class="card-title text-2xl mb-4">
+            <i class="fas fa-bolt mr-2 text-yellow-500"></i>Quick Actions
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <a href="{% url 'tests_app:question_add' %}" class="btn btn-primary btn-lg">
+                <i class="fas fa-plus mr-2"></i>Add New Question
+            </a>
+            <button class="btn btn-secondary btn-lg" onclick="exportModal.showModal()">
+                <i class="fas fa-download mr-2"></i>Export Test CSV
+            </button>
+            <a href="{% url 'admin:index' %}" target="_blank" class="btn btn-accent btn-lg">
+                <i class="fas fa-cog mr-2"></i>Admin Panel
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <!-- Recent Questions -->
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <h2 class="card-title text-xl mb-4">
+                <i class="fas fa-clock mr-2 text-blue-500"></i>Recent Questions
+                <div class="badge badge-primary">{{ recent_questions|length }}</div>
+            </h2>
+            
+            {% if recent_questions %}
+                <div class="space-y-3">
+                    {% for question in recent_questions %}
+                    <div class="border border-base-300 rounded-lg p-4 hover:bg-base-200 transition-colors">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="badge badge-outline badge-sm">
+                                Test {{ question.test_number }}
+                            </div>
+                            <div class="text-xs text-base-content/60">
+                                {{ question.created_at|timesince }} ago
+                            </div>
+                        </div>
+                        
+                        <h3 class="font-medium text-sm mb-2 line-clamp-2">
+                            {{ question.question_text|truncatechars:100 }}
+                        </h3>
+                        
+                        <div class="flex justify-between items-center text-xs">
+                            <div class="flex items-center space-x-2">
+                                <span class="badge badge-ghost badge-xs">
+                                    {{ question.exam.display_name|truncatechars:20 }}
+                                </span>
+                                <span class="badge badge-{% if question.question_type == 'multiple_select' %}info{% else %}success{% endif %} badge-xs">
+                                    {% if question.question_type == 'multiple_select' %}Multi-Select{% else %}Single Choice{% endif %}
+                                </span>
+                            </div>
+                            <div class="flex items-center text-base-content/60">
+                                <i class="fas fa-list mr-1"></i>
+                                {{ question.total_answers }} answers
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="card-actions justify-end mt-4">
+                    <a href="{% url 'tests_app:question_list' %}" class="btn btn-sm btn-primary">
+                        View All Questions <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+            {% else %}
+                <div class="text-center py-8 text-base-content/60">
+                    <i class="fas fa-question-circle text-4xl mb-2"></i>
+                    <p>No questions yet. <a href="{% url 'tests_app:question_add' %}" class="link link-primary">Create your first question</a></p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Exams Overview -->
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <h2 class="card-title text-xl mb-4">
+                <i class="fas fa-certificate mr-2 text-green-500"></i>Certification Exams
+                <div class="badge badge-secondary">{{ exams|length }}</div>
+            </h2>
+            
+            {% if exams %}
+                <div class="space-y-4">
+                    {% for exam in exams %}
+                    <div class="border border-base-300 rounded-lg p-4 hover:bg-base-200 transition-colors">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-medium text-sm">{{ exam.display_name }}</h3>
+                            <div class="badge badge-{% if exam.provider == 'Google Cloud' %}info{% else %}warning{% endif %} badge-sm">
+                                {{ exam.provider }}
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4 text-xs mt-3">
+                            <div class="flex items-center">
+                                <i class="fas fa-sitemap mr-2 text-purple-500"></i>
+                                <span>{{ exam.domain_count }} domain{{ exam.domain_count|pluralize }}</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-question-circle mr-2 text-blue-500"></i>
+                                <span>{{ exam.question_count }} question{{ exam.question_count|pluralize }}</span>
+                            </div>
+                        </div>
+                        
+                        {% if exam.question_count > 0 %}
+                        <div class="mt-3">
+                            <div class="flex justify-between text-xs mb-1">
+                                <span>Question Progress</span>
+                                <span>{{ exam.question_count }} questions</span>
+                            </div>
+                            <progress class="progress progress-primary w-full" value="{{ exam.question_count }}" max="100"></progress>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-8 text-base-content/60">
+                    <i class="fas fa-graduation-cap text-4xl mb-2"></i>
+                    <p>No exams configured. <a href="{% url 'admin:tests_app_exam_add' %}" class="link link-primary" target="_blank">Add an exam</a></p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Help Section -->
+<div class="card bg-gradient-to-r from-cyan-50 to-blue-50 border border-cyan-200 mt-8">
+    <div class="card-body">
+        <h2 class="card-title text-cyan-800">
+            <i class="fas fa-lightbulb mr-2"></i>Getting Started
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div class="text-center">
+                <div class="text-cyan-600 text-2xl mb-2">
+                    <i class="fas fa-plus-circle"></i>
+                </div>
+                <h3 class="font-semibold text-cyan-800 mb-1">1. Add Questions</h3>
+                <p class="text-cyan-600 text-sm">Create practice questions with multiple answer options</p>
+            </div>
+            <div class="text-center">
+                <div class="text-cyan-600 text-2xl mb-2">
+                    <i class="fas fa-tasks"></i>
+                </div>
+                <h3 class="font-semibold text-cyan-800 mb-1">2. Organize Tests</h3>
+                <p class="text-cyan-600 text-sm">Group questions by test numbers and exam domains</p>
+            </div>
+            <div class="text-center">
+                <div class="text-cyan-600 text-2xl mb-2">
+                    <i class="fas fa-download"></i>
+                </div>
+                <h3 class="font-semibold text-cyan-800 mb-1">3. Export CSV</h3>
+                <p class="text-cyan-600 text-sm">Generate Udemy-compatible files for your courses</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-refresh statistics every 30 seconds (optional)
+    // setInterval(() => {
+    //     fetch(window.location.href)
+    //         .then(response => response.text())
+    //         .then(html => {
+    //             // Update stats only
+    //             const parser = new DOMParser();
+    //             const doc = parser.parseFromString(html, 'text/html');
+    //             const newStats = doc.querySelectorAll('.stat-value');
+    //             const currentStats = document.querySelectorAll('.stat-value');
+    //             
+    //             newStats.forEach((stat, index) => {
+    //                 if (currentStats[index] && stat.textContent !== currentStats[index].textContent) {
+    //                     currentStats[index].textContent = stat.textContent;
+    //                     currentStats[index].parentElement.classList.add('animate-pulse');
+    //                     setTimeout(() => {
+    //                         currentStats[index].parentElement.classList.remove('animate-pulse');
+    //                     }, 1000);
+    //                 }
+    //             });
+    //         })
+    //         .catch(console.error);
+    // }, 30000);
+</script>
+{% endblock %}

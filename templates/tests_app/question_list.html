@@ -1,0 +1,400 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Questions - Udemy Test Maker{% endblock %}
+
+{% block breadcrumb_items %}
+<li>Questions</li>
+{% endblock %}
+
+{% block page_title %}
+<i class="fas fa-question-circle mr-3"></i>Question Management
+{% endblock %}
+
+{% block page_description %}
+Browse, search, and manage your Google Cloud certification practice questions
+{% endblock %}
+
+{% block content %}
+<!-- Filters and Search -->
+<div class="card bg-base-100 shadow-lg mb-6">
+    <div class="card-body">
+        <div class="flex flex-col lg:flex-row gap-4 items-center">
+            <!-- Search -->
+            <div class="form-control flex-1">
+                <div class="input-group">
+                    <input type="text" placeholder="Search questions..." class="input input-bordered flex-1" id="searchInput">
+                    <button class="btn btn-square btn-primary" onclick="searchQuestions()">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Filters -->
+            <div class="flex flex-wrap gap-2">
+                <select class="select select-bordered select-sm" id="examFilter" onchange="filterQuestions()">
+                    <option value="">All Exams</option>
+                    {% for exam in exams %}
+                    <option value="{{ exam.name }}">{{ exam.display_name|truncatechars:30 }}</option>
+                    {% endfor %}
+                </select>
+                
+                <select class="select select-bordered select-sm" id="testFilter" onchange="filterQuestions()">
+                    <option value="">All Tests</option>
+                    {% for i in "123456789012345"|make_list %}
+                    <option value="{{ forloop.counter }}">Test {{ forloop.counter }}</option>
+                    {% endfor %}
+                </select>
+                
+                <select class="select select-bordered select-sm" id="typeFilter" onchange="filterQuestions()">
+                    <option value="">All Types</option>
+                    <option value="multiple_choice">Multiple Choice</option>
+                    <option value="multiple_select">Multiple Select</option>
+                </select>
+                
+                <button class="btn btn-sm btn-ghost" onclick="clearFilters()">
+                    <i class="fas fa-times mr-1"></i>Clear
+                </button>
+            </div>
+            
+            <!-- Add Question Button -->
+            <a href="{% url 'tests_app:question_add' %}" class="btn btn-primary">
+                <i class="fas fa-plus mr-2"></i>Add Question
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Questions Summary -->
+<div class="flex justify-between items-center mb-4">
+    <div class="text-sm text-base-content/70">
+        Showing <span id="showing-count">{{ questions|length }}</span> of {{ total_count|default:questions|length }} questions
+    </div>
+    <div class="dropdown dropdown-end">
+        <label tabindex="0" class="btn btn-sm btn-ghost">
+            <i class="fas fa-sort mr-1"></i>Sort
+        </label>
+        <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52">
+            <li><a onclick="sortQuestions('newest')"><i class="fas fa-clock mr-2"></i>Newest First</a></li>
+            <li><a onclick="sortQuestions('oldest')"><i class="fas fa-history mr-2"></i>Oldest First</a></li>
+            <li><a onclick="sortQuestions('test')"><i class="fas fa-sort-numeric-up mr-2"></i>Test Number</a></li>
+            <li><a onclick="sortQuestions('exam')"><i class="fas fa-graduation-cap mr-2"></i>Exam Name</a></li>
+        </ul>
+    </div>
+</div>
+
+<!-- Questions List -->
+<div id="questions-container">
+    {% if questions %}
+        <div class="grid gap-4" id="questions-grid">
+            {% for question in questions %}
+            <div class="card bg-base-100 shadow-lg hover:shadow-xl transition-shadow question-card" 
+                 data-exam="{{ question.exam.name }}" 
+                 data-test="{{ question.test_number }}" 
+                 data-type="{{ question.question_type }}"
+                 data-search="{{ question.question_text|lower }} {{ question.exam.display_name|lower }} {{ question.domain.name|lower }}">
+                
+                <div class="card-body">
+                    <!-- Question Header -->
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex flex-wrap gap-2">
+                            <div class="badge badge-primary badge-sm">
+                                Test {{ question.test_number }}
+                            </div>
+                            <div class="badge badge-outline badge-sm">
+                                {{ question.exam.display_name|truncatechars:25 }}
+                            </div>
+                            <div class="badge badge-{% if question.question_type == 'multiple_select' %}info{% else %}success{% endif %} badge-sm">
+                                {% if question.question_type == 'multiple_select' %}
+                                    <i class="fas fa-check-double mr-1"></i>Multi-Select
+                                {% else %}
+                                    <i class="fas fa-check mr-1"></i>Single Choice
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="dropdown dropdown-end">
+                            <label tabindex="0" class="btn btn-ghost btn-sm btn-circle">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </label>
+                            <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52">
+                                <li><a href="{% url 'tests_app:question_detail' question.pk %}">
+                                    <i class="fas fa-eye mr-2"></i>View Details
+                                </a></li>
+                                <li><a href="{% url 'tests_app:question_edit' question.pk %}">
+                                    <i class="fas fa-edit mr-2"></i>Edit Question
+                                </a></li>
+                                <li><a href="#" onclick="confirmDelete({{ question.pk }}, '{{ question.question_text|truncatechars:50 }}')">
+                                    <i class="fas fa-trash mr-2 text-error"></i>Delete
+                                </a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Question Text -->
+                    <h3 class="text-lg font-medium mb-3 leading-relaxed">
+                        {{ question.question_text|truncatechars:200 }}
+                    </h3>
+                    
+                    <!-- Domain Info -->
+                    <div class="mb-3">
+                        <span class="text-sm text-base-content/60">
+                            <i class="fas fa-sitemap mr-1"></i>{{ question.domain.name|truncatechars:60 }}
+                        </span>
+                    </div>
+                    
+                    <!-- Answers Preview -->
+                    <div class="mb-4">
+                        <div class="text-sm font-medium mb-2 text-base-content/80">
+                            Answers ({{ question.total_answers }}):
+                        </div>
+                        <div class="space-y-1">
+                            {% for answer in question.answers.all|slice:":3" %}
+                            <div class="flex items-start text-sm">
+                                <div class="mr-2 mt-0.5">
+                                    {% if answer.is_correct %}
+                                        <i class="fas fa-check-circle text-success"></i>
+                                    {% else %}
+                                        <i class="fas fa-times-circle text-error"></i>
+                                    {% endif %}
+                                </div>
+                                <span class="{% if answer.is_correct %}text-success{% endif %}">
+                                    {{ answer.answer_text|truncatechars:100 }}
+                                </span>
+                            </div>
+                            {% endfor %}
+                            {% if question.total_answers > 3 %}
+                            <div class="text-sm text-base-content/60 ml-6">
+                                ... and {{ question.total_answers|add:"-3" }} more answer{{ question.total_answers|add:"-3"|pluralize }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Question Footer -->
+                    <div class="flex justify-between items-center text-sm text-base-content/60">
+                        <div class="flex items-center space-x-4">
+                            <span>
+                                <i class="fas fa-check-circle mr-1 text-success"></i>
+                                {{ question.correct_answers_count }}/{{ question.total_answers }} correct
+                            </span>
+                        </div>
+                        <span title="{{ question.created_at }}">
+                            <i class="fas fa-clock mr-1"></i>{{ question.created_at|timesince }} ago
+                        </span>
+                    </div>
+                    
+                    <!-- Card Actions -->
+                    <div class="card-actions justify-end mt-4">
+                        <a href="{% url 'tests_app:question_detail' question.pk %}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-eye mr-1"></i>View
+                        </a>
+                        <a href="{% url 'tests_app:question_edit' question.pk %}" class="btn btn-sm btn-secondary">
+                            <i class="fas fa-edit mr-1"></i>Edit
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Pagination (if implemented) -->
+        {% if is_paginated %}
+        <div class="flex justify-center mt-8">
+            <div class="btn-group">
+                {% if page_obj.has_previous %}
+                    <a href="?page=1" class="btn btn-sm">««</a>
+                    <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-sm">‹</a>
+                {% endif %}
+                
+                <span class="btn btn-sm btn-active">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                </span>
+                
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}" class="btn btn-sm">›</a>
+                    <a href="?page={{ page_obj.paginator.num_pages }}" class="btn btn-sm">»»</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        
+    {% else %}
+        <!-- Empty State -->
+        <div class="card bg-base-100 shadow-lg">
+            <div class="card-body text-center py-16">
+                <div class="text-6xl text-base-content/20 mb-4">
+                    <i class="fas fa-question-circle"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-base-content/60 mb-2">No Questions Found</h3>
+                <p class="text-base-content/60 mb-6">
+                    {% if request.GET %}
+                        No questions match your current filters. Try adjusting your search criteria.
+                    {% else %}
+                        Get started by creating your first practice question for Google Cloud certifications.
+                    {% endif %}
+                </p>
+                <div class="flex justify-center gap-4">
+                    {% if request.GET %}
+                        <button class="btn btn-secondary" onclick="clearFilters()">
+                            <i class="fas fa-times mr-2"></i>Clear Filters
+                        </button>
+                    {% endif %}
+                    <a href="{% url 'tests_app:question_add' %}" class="btn btn-primary">
+                        <i class="fas fa-plus mr-2"></i>Add Your First Question
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Delete Confirmation Modal -->
+<dialog id="deleteModal" class="modal">
+    <form method="dialog" class="modal-box">
+        <h3 class="font-bold text-lg text-error mb-4">
+            <i class="fas fa-exclamation-triangle mr-2"></i>Confirm Deletion
+        </h3>
+        <p class="mb-4">Are you sure you want to delete this question?</p>
+        <p class="text-sm text-base-content/60 mb-6" id="deleteQuestionText"></p>
+        
+        <div class="modal-action">
+            <button class="btn">Cancel</button>
+            <button class="btn btn-error" onclick="deleteQuestion()">
+                <i class="fas fa-trash mr-2"></i>Delete
+            </button>
+        </div>
+    </form>
+</dialog>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let deleteQuestionId = null;
+let allQuestions = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Store all questions for filtering
+    allQuestions = Array.from(document.querySelectorAll('.question-card'));
+    updateShowingCount();
+});
+
+function searchQuestions() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    filterAndShow();
+}
+
+function filterQuestions() {
+    filterAndShow();
+}
+
+function filterAndShow() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const examFilter = document.getElementById('examFilter').value;
+    const testFilter = document.getElementById('testFilter').value;
+    const typeFilter = document.getElementById('typeFilter').value;
+    
+    let visibleCount = 0;
+    
+    allQuestions.forEach(card => {
+        let show = true;
+        
+        // Search filter
+        if (searchTerm && !card.dataset.search.includes(searchTerm)) {
+            show = false;
+        }
+        
+        // Exam filter
+        if (examFilter && card.dataset.exam !== examFilter) {
+            show = false;
+        }
+        
+        // Test filter
+        if (testFilter && card.dataset.test !== testFilter) {
+            show = false;
+        }
+        
+        // Type filter
+        if (typeFilter && card.dataset.type !== typeFilter) {
+            show = false;
+        }
+        
+        card.style.display = show ? 'block' : 'none';
+        if (show) visibleCount++;
+    });
+    
+    updateShowingCount(visibleCount);
+}
+
+function clearFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('examFilter').value = '';
+    document.getElementById('testFilter').value = '';
+    document.getElementById('typeFilter').value = '';
+    
+    allQuestions.forEach(card => {
+        card.style.display = 'block';
+    });
+    
+    updateShowingCount();
+}
+
+function sortQuestions(sortBy) {
+    const container = document.getElementById('questions-grid');
+    const questions = Array.from(container.children);
+    
+    questions.sort((a, b) => {
+        switch(sortBy) {
+            case 'newest':
+                return new Date(b.querySelector('[title]').getAttribute('title')) - 
+                       new Date(a.querySelector('[title]').getAttribute('title'));
+            case 'oldest':
+                return new Date(a.querySelector('[title]').getAttribute('title')) - 
+                       new Date(b.querySelector('[title]').getAttribute('title'));
+            case 'test':
+                return parseInt(a.dataset.test) - parseInt(b.dataset.test);
+            case 'exam':
+                return a.dataset.exam.localeCompare(b.dataset.exam);
+            default:
+                return 0;
+        }
+    });
+    
+    questions.forEach(question => container.appendChild(question));
+}
+
+function updateShowingCount(count = null) {
+    const showingCount = count !== null ? count : allQuestions.length;
+    document.getElementById('showing-count').textContent = showingCount;
+}
+
+function confirmDelete(questionId, questionText) {
+    deleteQuestionId = questionId;
+    document.getElementById('deleteQuestionText').textContent = `"${questionText}"`;
+    document.getElementById('deleteModal').showModal();
+}
+
+function deleteQuestion() {
+    if (deleteQuestionId) {
+        // Here you would make an AJAX call to delete the question
+        window.location.href = `/questions/${deleteQuestionId}/delete/`;
+    }
+}
+
+// Enter key search
+document.getElementById('searchInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        searchQuestions();
+    }
+});
+
+// Real-time search
+document.getElementById('searchInput').addEventListener('input', function() {
+    clearTimeout(this.searchTimeout);
+    this.searchTimeout = setTimeout(() => {
+        searchQuestions();
+    }, 300);
+});
+</script>
+{% endblock %}

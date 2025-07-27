@@ -1,0 +1,397 @@
+{% load static tailwind_tags %}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Udemy Test Maker{% endblock %}</title>
+    
+    <!-- Tailwind CSS with DaisyUI -->
+    {% tailwind_css %}
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <style>
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-base-100 min-h-screen">
+    <!-- Navigation -->
+    <div class="navbar bg-primary text-primary-content shadow-lg">
+        <div class="flex-1">
+            <a href="{% url 'tests_app:dashboard' %}" class="btn btn-ghost normal-case text-xl">
+                <i class="fas fa-graduation-cap mr-2"></i>
+                Udemy Test Maker
+            </a>
+        </div>
+        <div class="flex-none">
+            <ul class="menu menu-horizontal px-1">
+                <li><a href="{% url 'tests_app:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                    <i class="fas fa-home mr-1"></i>Dashboard
+                </a></li>
+                <li><a href="{% url 'tests_app:question_list' %}" class="{% if 'question' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-question-circle mr-1"></i>Questions
+                </a></li>
+                <li class="dropdown dropdown-end">
+                    <label tabindex="0" class="btn btn-ghost">
+                        <i class="fas fa-download mr-1"></i>Export
+                        <i class="fas fa-chevron-down ml-1"></i>
+                    </label>
+                    <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52 text-base-content">
+                        <li><a href="#" onclick="exportModal.showModal()">
+                            <i class="fas fa-file-csv mr-2"></i>Generate CSV
+                        </a></li>
+                        <li><a href="{% url 'admin:index' %}" target="_blank">
+                            <i class="fas fa-cog mr-2"></i>Admin Panel
+                        </a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-6">
+        <!-- Breadcrumbs -->
+        {% block breadcrumbs %}
+        <div class="text-sm breadcrumbs mb-4">
+            <ul>
+                <li><a href="{% url 'tests_app:dashboard' %}"><i class="fas fa-home mr-1"></i>Home</a></li>
+                {% block breadcrumb_items %}{% endblock %}
+            </ul>
+        </div>
+        {% endblock %}
+
+        <!-- Page Header -->
+        {% block page_header %}
+        <div class="mb-6">
+            <h1 class="text-3xl font-bold text-base-content mb-2">
+                {% block page_title %}Udemy Test Maker{% endblock %}
+            </h1>
+            {% block page_description %}
+            <p class="text-base-content/70">
+                Create and manage practice test questions for Google Cloud certification exams
+            </p>
+            {% endblock %}
+        </div>
+        {% endblock %}
+
+        <!-- Messages/Alerts -->
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} mb-2">
+                <div>
+                    {% if message.tags == 'error' %}
+                        <i class="fas fa-exclamation-circle mr-2"></i>
+                    {% elif message.tags == 'success' %}
+                        <i class="fas fa-check-circle mr-2"></i>
+                    {% elif message.tags == 'warning' %}
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                    {% else %}
+                        <i class="fas fa-info-circle mr-2"></i>
+                    {% endif %}
+                    {{ message }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Page Content -->
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer footer-center p-4 bg-base-300 text-base-content mt-auto">
+        <div>
+            <p>Copyright © {% now "Y" %} - Udemy Test Maker for Google Cloud Certifications</p>
+        </div>
+    </footer>
+
+    <!-- Export Modal -->
+    <dialog id="exportModal" class="modal">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg mb-4">
+                <i class="fas fa-download mr-2"></i>Export Questions to CSV
+            </h3>
+            
+            <div class="form-control mb-4">
+                <label class="label">
+                    <span class="label-text">Select Exam</span>
+                </label>
+                <select id="exportExamSelect" class="select select-bordered w-full" required>
+                    <option value="">Choose exam...</option>
+                    <option value="google_cloud_developer">Google Professional Cloud Developer</option>
+                    <option value="google_cloud_architect">Google Professional Cloud Architect</option>
+                    <option value="google_cloud_engineer">Google Cloud Associate Engineer</option>
+                    <option value="google_cloud_security">Google Professional Cloud Security Engineer</option>
+                    <option value="google_cloud_data_engineer">Google Professional Data Engineer</option>
+                    <option value="google_cloud_devops">Google Professional Cloud DevOps Engineer</option>
+                </select>
+            </div>
+            
+            <div class="form-control mb-4">
+                <label class="label">
+                    <span class="label-text">Test Number</span>
+                </label>
+                <select id="exportTestSelect" class="select select-bordered w-full" required>
+                    <option value="">Select exam first...</option>
+                </select>
+            </div>
+            
+            <div class="modal-action">
+                <button type="button" class="btn" onclick="exportModal.close()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="downloadCSV()">
+                    <i class="fas fa-download mr-2"></i>Download CSV
+                </button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
+
+    <!-- JavaScript -->
+    <script>
+        // Theme toggle functionality
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Load saved theme
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        });
+
+        // Auto-hide alerts after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    alert.style.opacity = '0';
+                    setTimeout(() => alert.remove(), 300);
+                }, 5000);
+            });
+        });
+
+        // Export modal functionality
+        function updateTestNumbers() {
+            const examSelect = document.querySelector('select[name="exam"]');
+            const testSelect = document.querySelector('select[name="test"]');
+            
+            if (!examSelect || !testSelect) return;
+            
+            const selectedExam = examSelect.value;
+            console.log('Selected exam:', selectedExam); // Debug log
+
+            // Clear existing options
+            testSelect.innerHTML = '<option value="">Loading...</option>';
+
+            if (selectedExam) {
+                // Populate test numbers (1-15 for now, could be dynamic based on actual data)
+                testSelect.innerHTML = '<option value="">Select test number...</option>';
+                for (let i = 1; i <= 15; i++) {
+                    const option = document.createElement('option');
+                    option.value = i;
+                    option.textContent = `Test ${i}`;
+                    testSelect.appendChild(option);
+                }
+                console.log('Test numbers populated'); // Debug log
+            } else {
+                testSelect.innerHTML = '<option value="">Select exam first...</option>';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const exportModal = document.getElementById('exportModal');
+            if (exportModal) {
+                exportModal.addEventListener('click', function(e) {
+                    if (e.target.closest('select[name="exam"]')) {
+                        // Small delay to ensure the select value is set
+                        setTimeout(updateTestNumbers, 100);
+                    }
+                });
+                
+                // Also bind to change event
+                const examSelect = document.querySelector('select[name="exam"]');
+                if (examSelect) {
+                    examSelect.addEventListener('change', updateTestNumbers);
+                }
+            }
+        });
+
+        // Handle export form submission
+        // document.addEventListener('DOMContentLoaded', function() {
+        //     const exportForm = document.getElementById('exportForm');
+        //     if (exportForm) {
+        //         exportForm.addEventListener('submit', function(e) {
+        //             const exam = this.exam.value;
+        //             const test = this.test.value;
+
+        //             console.log('Export form submitted:', {exam, test}); // Debug log
+
+        //             if (!exam || !test) {
+        //                 e.preventDefault();
+        //                 alert('Please select both an exam and test number.');
+        //                 return false;
+        //             }
+
+        //             // Show loading state
+        //             const submitBtn = this.querySelector('button[type="submit"]');
+        //             const originalText = submitBtn.innerHTML;
+        //             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating...';
+        //             submitBtn.disabled = true;
+
+        //             // Let the form submit normally - don't prevent default
+        //             console.log('Submitting to:', this.action + '?' + new URLSearchParams({exam, test}));
+        //         });
+        //     }
+        // });
+        document.addEventListener('DOMContentLoaded', function() {
+            const examSelect = document.getElementById('exportExamSelect');
+            const testSelect = document.getElementById('exportTestSelect');
+            
+            if (examSelect && testSelect) {
+                examSelect.addEventListener('change', function() {
+                    const selectedExam = this.value;
+                    console.log('Selected exam:', selectedExam);
+                    
+                    // Clear test options
+                    testSelect.innerHTML = '<option value="">Loading...</option>';
+                    
+                    if (selectedExam) {
+                        // Add test numbers 1-15
+                        testSelect.innerHTML = '<option value="">Select test number...</option>';
+                        for (let i = 1; i <= 15; i++) {
+                            const option = document.createElement('option');
+                            option.value = i;
+                            option.textContent = `Test ${i}`;
+                            testSelect.appendChild(option);
+                        }
+                        console.log('Test numbers populated');
+                    } else {
+                        testSelect.innerHTML = '<option value="">Select exam first...</option>';
+                    }
+                });
+            }
+        });
+
+        function downloadCSV() {
+            const examSelect = document.getElementById('exportExamSelect');
+            const testSelect = document.getElementById('exportTestSelect');
+            
+            const exam = examSelect.value;
+            const test = testSelect.value;
+            
+            console.log('Download CSV clicked:', {exam, test});
+            
+            if (!exam || !test) {
+                alert('Please select both an exam and test number.');
+                return;
+            }
+            
+            // Show loading state
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating...';
+            btn.disabled = true;
+            
+            // Create download URL
+            const downloadUrl = `{% url 'tests_app:export_test_csv' %}?exam=${encodeURIComponent(exam)}&test=${encodeURIComponent(test)}`;
+            console.log('Download URL:', downloadUrl);
+            
+            // Trigger download
+            window.location.href = downloadUrl;
+            
+            // Reset button after delay
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                exportModal.close();
+            }, 2000);
+        }
+
+        // Global keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl/Cmd + K to open search (if available)
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                const searchInput = document.querySelector('#searchInput');
+                if (searchInput) {
+                    searchInput.focus();
+                }
+            }
+            
+            // Ctrl/Cmd + N to add new question
+            if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+                e.preventDefault();
+                window.location.href = '{% url "tests_app:question_add" %}';
+            }
+            
+            // Ctrl/Cmd + E to open export modal
+            if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+                e.preventDefault();
+                exportModal.showModal();
+            }
+        });
+
+        // Utility function for showing toast notifications
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type} fixed top-4 right-4 w-auto z-50 shadow-lg`;
+            
+            let icon = 'fas fa-info-circle';
+            if (type === 'success') icon = 'fas fa-check-circle';
+            else if (type === 'error') icon = 'fas fa-exclamation-circle';
+            else if (type === 'warning') icon = 'fas fa-exclamation-triangle';
+            
+            toast.innerHTML = `<div><i class="${icon} mr-2"></i>${message}</div>`;
+            document.body.appendChild(toast);
+            
+            // Auto-remove after 4 seconds
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // AJAX utility function
+        function makeAjaxRequest(url, options = {}) {
+            const defaultOptions = {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json',
+                }
+            };
+
+            if (options.method === 'POST') {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+                if (csrfToken) {
+                    defaultOptions.headers['X-CSRFToken'] = csrfToken.value;
+                }
+            }
+
+            return fetch(url, { ...defaultOptions, ...options });
+        }
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
