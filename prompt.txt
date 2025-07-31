@@ -1,0 +1,11 @@
+I changed my mind. For know I want only extracting data from html file (example html file I added to "Project knowledge" under the name input.html) and creating csv file from this data (output template is added to "Project knowledge" under the name udemy_csv_template.csv).
+The input file contains the list of <li class="wpProQuiz_listItem"> (there will be approximately 60 items in this list), each containing question with answers, and links to the additional resources in the end of overview explanation. Some of explanations contain also link to the image explaining answer.
+What I discovered:
+
+- there can be <ul data-type="multiple"> that corresponds to multiple_select question type and <ul data-type="single"> that corresponds to multiple_choice question type
+- the radio type input have designation with correct answer (<li class="wpProQuiz_questionListItem wpProQuiz_answerCorrect">)
+- the multiple input doesn't have that designation, don't know how the correct answers are designated, but the correct answers are listed in <span class="wpProQuiz_respone_span"> Unattempted
+
+I want you to create python script where I will paste path to input file, and that script will create for me csv file based on a template. I want you also to extract image url from the html tags and add it to overall explanation, and also add all links to additional resources in that explanation
+
+In the future i want this script to create objects in db from django models, but for now I want only converting html to csv

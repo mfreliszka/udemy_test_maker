@@ -102,7 +102,7 @@ class Question(models.Model):
     question_type = models.CharField(
         max_length=20, 
         choices=QUESTION_TYPE_CHOICES, 
-        default=MULTIPLE_CHOICE,
+        default=MULTIPLE_SELECT,
         help_text="Type of question (multiple choice or multiple select)"
     )
     
@@ -110,7 +110,16 @@ class Question(models.Model):
         blank=True,
         help_text="Overall explanation for the question (why the correct answers are correct)"
     )
-    
+
+    image_external_url = models.ImageField(
+        blank=True,
+        help_text="Image related to the question (optional)"
+    )
+
+    image_external_url = models.URLField(
+        blank=True,
+        help_text="URL of an image related to the question (optional)"
+    )
     # Metadata fields
     is_active = models.BooleanField(default=True, help_text="Whether this question is active")
     created_at = models.DateTimeField(auto_now_add=True)
