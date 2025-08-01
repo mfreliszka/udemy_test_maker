@@ -28,16 +28,14 @@ def extract_links_and_images(soup_element):
     # Extract all links
     for link in soup_element.find_all('a', href=True):
         url = link.get('href')
-        link_text = clean_text(link.get_text())
         if url:
-            links.append(f"{link_text}: {url}" if link_text else url)
+            links.append(url)
     
     # Extract all images
     for img in soup_element.find_all('img', src=True):
         src = img.get('src')
-        alt = img.get('alt', '')
         if src:
-            images.append(f"Image{' (' + alt + ')' if alt else ''}: {src}")
+            images.append(src)
     
     return links, images
 
@@ -56,15 +54,15 @@ def determine_correct_answers(question_element, question_type):
                 
                 # Look for "Correct answers: A, C" pattern - be more precise
                 patterns = [
-                    r'Correct answer?:\s*([A-Z](?:\s*,\s*[A-Z])*)',  # Matches "A, C" but stops before other text
-                    r'Correct answer?:\s*([A-Z](?:\s+and\s+[A-Z])*)',  # Matches "A and C"
-                    r'Correct answer?:\s*([A-Z](?:\s*[A-Z])*)'  # Matches "A C"
+                    r'Correct answer?:\s*([A-Z](?:\s*,\s*[A-Z])*)',
+                    r'Correct answer?:\s*([A-Z](?:\s+and\s+[A-Z])*)',
+                    r'Correct answer?:\s*([A-Z](?:\s*[A-Z])*)'
                     r'Correct answers?:\s*([A-Z](?:\s*,\s*[A-Z])*)',  # Matches "A, C" but stops before other text
                     r'Correct answers?:\s*([A-Z](?:\s+and\s+[A-Z])*)',  # Matches "A and C"
                     r'Correct answers?:\s*([A-Z](?:\s*[A-Z])*)'  # Matches "A C"
-                    r'Correct answer?\s*([A-Z](?:\s*,\s*[A-Z])*)',  # Matches "A, C" but stops before other text
-                    r'Correct answer?\s*([A-Z](?:\s+and\s+[A-Z])*)',  # Matches "A and C"
-                    r'Correct answer?\s*([A-Z](?:\s*[A-Z])*)'  # Matches "A C"
+                    r'Correct answer?\s*([A-Z](?:\s*,\s*[A-Z])*)',
+                    r'Correct answer?\s*([A-Z](?:\s+and\s+[A-Z])*)',
+                    r'Correct answer?\s*([A-Z](?:\s*[A-Z])*)'
                 ]
                 
                 for pattern in patterns:
@@ -209,7 +207,7 @@ def extract_question_data(question_element):
                 for link in links:
                     explanation_parts.append(link)
             
-            data['overall_explanation'] = ' | '.join(explanation_parts)
+            data['overall_explanation'] = '\n'.join(explanation_parts)
     
     return data
 
